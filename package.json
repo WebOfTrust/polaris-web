@@ -1,11 +1,11 @@
 {
-  "name": "polaris-web",
-  "version": "1.0.1",
-  "description": "companion package for polaris web extension",
+  "name": "signify-polaris-web",
+  "version": "1.0.2",
+  "description": "companion package for signify browser extension",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Hunain Bin Sajid",
+  "author": "RootsID",
   "license": "ISC"
 }
