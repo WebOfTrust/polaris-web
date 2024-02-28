@@ -13,6 +13,7 @@ window.addEventListener(
     if (event.data.type && event.data.type === "signify-extension") {
       console.log("Content script loaded from polaris-web");
       extensionId = event.data.data.extensionId;
+      pubsub.publish("signify-extension-loaded", extensionId);
     }
 
     if (event.data.type && event.data.type === "signify-signature") {
@@ -46,6 +47,27 @@ const requestAutoSignin = async () => {
   }
 };
 
+const isExtensionInstalled = (func) => {
+  const timeout = setTimeout(() => {
+    func(false);
+  }, 1000);
+  pubsub.subscribe("signify-extension-loaded", (_event, data) => {
+    func(data);
+    clearTimeout(timeout);
+    pubsub.unsubscribe("signify-extension-loaded");
+  });
+};
+
+const trySettingVendorUrl = async (vendorUrl) => {
+  await chrome.runtime.sendMessage(extensionId, {
+    type: "vendor-info",
+    subtype: "attempt-set-vendor-url",
+    data: {
+      vendorUrl,
+    },
+  });
+};
+
 const subscribeToSignature = (func) => {
   pubsub.subscribe("signify-signature", (_event, data) => func(data));
 };
@@ -61,4 +83,6 @@ export {
   requestAutoSignin,
   subscribeToSignature,
   unsubscribeFromSignature,
+  isExtensionInstalled,
+  trySettingVendorUrl,
 };

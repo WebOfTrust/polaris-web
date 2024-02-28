@@ -1,6 +1,6 @@
 {
   "name": "polaris-web",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "companion package for polaris web extension",
   "main": "index.js",
   "scripts": {
