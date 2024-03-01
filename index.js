@@ -1,8 +1,6 @@
 import { pubsub } from "./pubsub";
 import { canCallAsync } from "./utils";
 
-export * from "./utils";
-
 var extensionId = "";
 
 window.addEventListener(
@@ -107,4 +105,5 @@ export {
   unsubscribeFromSignature,
   isExtensionInstalled,
   trySettingVendorUrl,
+  canCallAsync,
 };
