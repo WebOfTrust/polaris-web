@@ -1,4 +1,7 @@
 import { pubsub } from "./pubsub";
+import { canCallAsync } from "./utils";
+
+export * from "./utils";
 
 var extensionId = "";
 
@@ -36,14 +39,30 @@ const requestAidORCred = () => {
 };
 
 const requestAutoSignin = async () => {
-  const { data, error } = await chrome.runtime.sendMessage(extensionId, {
-    type: "fetch-resource",
-    subtype: "auto-signin-signature",
-  });
-  if (error) {
-    window.postMessage({ type: "select-auto-signin" }, "*");
+  /**
+   * In chrome or brave, chrome.runtime is accessible in webpages but in other browsers
+   * like firefox chrome.runtime can only be accesed by content script.
+   * canCallAsync() means sendMessage api can be used otherwise we postMessage to content script that
+   * communicates with service-worker.
+   */
+  if (canCallAsync()) {
+    const { data, error } = await chrome.runtime.sendMessage(extensionId, {
+      type: "fetch-resource",
+      subtype: "auto-signin-signature",
+    });
+    if (error) {
+      window.postMessage({ type: "select-auto-signin" }, "*");
+    } else {
+      return data;
+    }
   } else {
-    pubsub.publish("signify-signature", data);
+    window.postMessage(
+      {
+        type: "fetch-resource",
+        subtype: "auto-signin-signature",
+      },
+      "*"
+    );
   }
 };
 
@@ -59,13 +78,16 @@ const isExtensionInstalled = (func) => {
 };
 
 const trySettingVendorUrl = async (vendorUrl) => {
-  await chrome.runtime.sendMessage(extensionId, {
-    type: "vendor-info",
-    subtype: "attempt-set-vendor-url",
-    data: {
-      vendorUrl,
+  window.postMessage(
+    {
+      type: "vendor-info",
+      subtype: "attempt-set-vendor-url",
+      data: {
+        vendorUrl,
+      },
     },
-  });
+    "*"
+  );
 };
 
 const subscribeToSignature = (func) => {
