@@ -64,6 +64,26 @@ const requestAutoSignin = async () => {
   }
 };
 
+const signifyFetch = async (url, req, fetchHeaders = false, aidName = "") => {
+  if (fetchHeaders && aidName) {
+    if (canCallAsync()) {
+      const { data } = await chrome.runtime.sendMessage(extensionId, {
+        type: "fetch-resource",
+        subtype: "signify-headers",
+        data: { aidName },
+      });
+      req.headers = { ...(req.headers ?? {}), ...(data ?? {}) };
+    } else {
+      req.headers = {
+        ...(req.headers ?? {}),
+        "x-append-signify-headers": "true",
+        "x-aid-name": aidName,
+      };
+    }
+  }
+  return window.fetch(url, req);
+};
+
 const isExtensionInstalled = (func) => {
   const timeout = setTimeout(() => {
     func(false);
@@ -106,4 +126,5 @@ export {
   isExtensionInstalled,
   trySettingVendorUrl,
   canCallAsync,
+  signifyFetch,
 };
