@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import { pubsub } from "./pubsub";
 import { canCallAsync } from "./utils";
 
@@ -17,61 +18,120 @@ window.addEventListener(
       pubsub.publish("signify-extension-loaded", extensionId);
     }
 
-    if (event.data.type && event.data.type === "signify-signature") {
-      pubsub.publish("signify-signature", event.data.data);
+    if (
+      event.data.type &&
+      event.data.type === "signify-signature" &&
+      event.data.requestId
+    ) {
+      pubsub.publish(event.data.requestId, event.data.data);
     }
   },
   false
 );
 
 const requestAid = () => {
-  window.postMessage({ type: "select-identifier" }, "*");
+  return new Promise((resolve) => {
+    const requestId = nanoid();
+    window.postMessage({ type: "select-identifier", requestId }, "*");
+    pubsub.subscribe(requestId, (_event, data) => {
+      resolve(data);
+      pubsub.unsubscribe(requestId);
+    });
+  });
 };
 
 const requestCredential = () => {
-  window.postMessage({ type: "select-credential" }, "*");
+  return new Promise((resolve) => {
+    const requestId = nanoid();
+    window.postMessage({ type: "select-credential", requestId }, "*");
+    pubsub.subscribe(requestId, (_event, data) => {
+      resolve(data);
+      pubsub.unsubscribe(requestId);
+    });
+  });
 };
 
 const requestAidORCred = () => {
-  window.postMessage({ type: "select-aid-or-credential" }, "*");
+  return new Promise((resolve) => {
+    const requestId = nanoid();
+    window.postMessage({ type: "select-aid-or-credential", requestId }, "*");
+    pubsub.subscribe(requestId, (_event, data) => {
+      resolve(data);
+      pubsub.unsubscribe(requestId);
+    });
+  });
 };
 
 const requestAutoSignin = async () => {
-  /**
-   * In chrome or brave, chrome.runtime is accessible in webpages but in other browsers
-   * like firefox chrome.runtime can only be accesed by content script.
-   * canCallAsync() means sendMessage api can be used otherwise we postMessage to content script that
-   * communicates with service-worker.
-   */
-  if (canCallAsync()) {
-    const { data, error } = await chrome.runtime.sendMessage(extensionId, {
-      type: "fetch-resource",
-      subtype: "auto-signin-signature",
-    });
-    if (error) {
-      window.postMessage({ type: "select-auto-signin" }, "*");
-    } else {
-      return data;
-    }
-  } else {
-    window.postMessage(
-      {
+  return new Promise(async (resolve, reject) => {
+    /**
+     * In chrome or brave, chrome.runtime is accessible in webpages but in other browsers
+     * like firefox chrome.runtime can only be accesed by content script.
+     * canCallAsync() means sendMessage api can be used otherwise we postMessage to content script that
+     * communicates with service-worker.
+     */
+    const requestId = nanoid();
+    if (canCallAsync()) {
+      const { data, error } = await chrome.runtime.sendMessage(extensionId, {
         type: "fetch-resource",
         subtype: "auto-signin-signature",
-      },
-      "*"
-    );
-  }
+      });
+      if (error) {
+        window.postMessage({ type: "select-auto-signin", requestId }, "*");
+        pubsub.subscribe(requestId, (_event, data) => {
+          resolve(data);
+          pubsub.unsubscribe(requestId);
+        });
+      } else {
+        resolve(data);
+      }
+    } else {
+      window.postMessage(
+        {
+          type: "fetch-resource",
+          subtype: "auto-signin-signature",
+          requestId,
+        },
+        "*"
+      );
+      pubsub.subscribe(requestId, (_event, data) => {
+        resolve(data);
+        pubsub.unsubscribe(requestId);
+      });
+    }
+  });
 };
 
-const isExtensionInstalled = (func) => {
-  const timeout = setTimeout(() => {
-    func(false);
-  }, 1000);
-  pubsub.subscribe("signify-extension-loaded", (_event, data) => {
-    func(data);
-    clearTimeout(timeout);
-    pubsub.unsubscribe("signify-extension-loaded");
+const signifyFetch = async (url, req, fetchHeaders = false, aidName = "") => {
+  if (fetchHeaders && aidName) {
+    if (canCallAsync()) {
+      const { data } = await chrome.runtime.sendMessage(extensionId, {
+        type: "fetch-resource",
+        subtype: "signify-headers",
+        data: { aidName },
+      });
+      req.headers = { ...(req.headers ?? {}), ...(data ?? {}) };
+    } else {
+      req.headers = {
+        ...(req.headers ?? {}),
+        "x-append-signify-headers": "true",
+        "x-aid-name": aidName,
+      };
+    }
+  }
+  return window.fetch(url, req);
+};
+
+const isExtensionInstalled = () => {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve(false);
+    }, 1000);
+    pubsub.subscribe("signify-extension-loaded", (_event, extensionId) => {
+      resolve(extensionId);
+      clearTimeout(timeout);
+      pubsub.unsubscribe("signify-extension-loaded");
+    });
   });
 };
 
@@ -106,4 +166,5 @@ export {
   isExtensionInstalled,
   trySettingVendorUrl,
   canCallAsync,
+  signifyFetch,
 };
