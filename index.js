@@ -77,11 +77,13 @@ const requestAutoSignin = async () => {
         subtype: "auto-signin-signature",
       });
       if (error) {
-        window.postMessage({ type: "select-auto-signin", requestId }, "*");
-        pubsub.subscribe(requestId, (_event, data) => {
-          resolve(data);
-          pubsub.unsubscribe(requestId);
-        });
+        if (error.code === 404) {
+          window.postMessage({ type: "select-auto-signin", requestId }, "*");
+          pubsub.subscribe(requestId, (_event, data) => {
+            resolve(data);
+            pubsub.unsubscribe(requestId);
+          });
+        }
       } else {
         resolve(data);
       }
@@ -105,11 +107,14 @@ const requestAutoSignin = async () => {
 const signifyFetch = async (url, req, fetchHeaders = false, aidName = "") => {
   if (fetchHeaders && aidName) {
     if (canCallAsync()) {
-      const { data } = await chrome.runtime.sendMessage(extensionId, {
+      const { data, error } = await chrome.runtime.sendMessage(extensionId, {
         type: "fetch-resource",
         subtype: "signify-headers",
         data: { aidName },
       });
+      if (error && error.message) {
+        throw new Error(error.message);
+      }
       req.headers = { ...(req.headers ?? {}), ...(data ?? {}) };
     } else {
       req.headers = {
