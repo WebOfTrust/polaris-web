@@ -83,6 +83,8 @@ const requestAutoSignin = async () => {
             resolve(data);
             pubsub.unsubscribe(requestId);
           });
+        } else {
+          reject(error);
         }
       } else {
         resolve(data);
