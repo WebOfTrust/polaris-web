@@ -12,27 +12,28 @@ window.addEventListener(
       return;
     }
 
-    if (event.data.type && event.data.type === "signify-extension") {
+    if (event.data?.type === "signify-extension") {
       console.log("Content script loaded from polaris-web");
       extensionId = event.data.data.extensionId;
       pubsub.publish("signify-extension-loaded", extensionId);
     }
 
-    if (
-      event.data.type &&
-      event.data.type === "signify-signature" &&
-      event.data.requestId
-    ) {
+    if (event.data?.type === "signify-signature" && event.data.requestId) {
       pubsub.publish(event.data.requestId, event.data.data);
     }
   },
   false
 );
 
-const requestAid = () => {
+/**
+ * 
+ * @param {string} rurl resource url for which AID is requested 
+ * @returns 
+ */
+const requestAid = (rurl) => {
   return new Promise((resolve) => {
     const requestId = nanoid();
-    window.postMessage({ type: "select-identifier", requestId }, "*");
+    window.postMessage({ type: "select-identifier", requestId, rurl }, "*");
     pubsub.subscribe(requestId, (_event, data) => {
       resolve(data);
       pubsub.unsubscribe(requestId);
@@ -40,10 +41,15 @@ const requestAid = () => {
   });
 };
 
-const requestCredential = () => {
+/**
+ * 
+ * @param {string} rurl resource url for which credential is requested
+ * @returns 
+ */
+const requestCredential = (rurl) => {
   return new Promise((resolve) => {
     const requestId = nanoid();
-    window.postMessage({ type: "select-credential", requestId }, "*");
+    window.postMessage({ type: "select-credential", requestId, rurl }, "*");
     pubsub.subscribe(requestId, (_event, data) => {
       resolve(data);
       pubsub.unsubscribe(requestId);
@@ -51,10 +57,15 @@ const requestCredential = () => {
   });
 };
 
-const requestAidORCred = () => {
+/**
+ * 
+ * @param {string} rurl resource url for which AID or credential is requested
+ * @returns 
+ */
+const requestAidORCred = (rurl) => {
   return new Promise((resolve) => {
     const requestId = nanoid();
-    window.postMessage({ type: "select-aid-or-credential", requestId }, "*");
+    window.postMessage({ type: "select-aid-or-credential", requestId, rurl }, "*");
     pubsub.subscribe(requestId, (_event, data) => {
       resolve(data);
       pubsub.unsubscribe(requestId);
@@ -62,7 +73,12 @@ const requestAidORCred = () => {
   });
 };
 
-const requestAutoSignin = async () => {
+/**
+ * 
+ * @param {string} rurl resource url for which auto signin is requested
+ * @returns 
+ */
+const requestAutoSignin = async (rurl) => {
   return new Promise(async (resolve, reject) => {
     /**
      * In chrome or brave, chrome.runtime is accessible in webpages but in other browsers
@@ -75,10 +91,16 @@ const requestAutoSignin = async () => {
       const { data, error } = await chrome.runtime.sendMessage(extensionId, {
         type: "fetch-resource",
         subtype: "auto-signin-signature",
+        data: {
+          rurl,
+        },
       });
       if (error) {
         if (error.code === 404) {
-          window.postMessage({ type: "select-auto-signin", requestId }, "*");
+          window.postMessage(
+            { type: "select-auto-signin", requestId, rurl },
+            "*"
+          );
           pubsub.subscribe(requestId, (_event, data) => {
             resolve(data);
             pubsub.unsubscribe(requestId);
@@ -95,6 +117,7 @@ const requestAutoSignin = async () => {
           type: "fetch-resource",
           subtype: "auto-signin-signature",
           requestId,
+          rurl
         },
         "*"
       );
@@ -106,27 +129,27 @@ const requestAutoSignin = async () => {
   });
 };
 
-const signifyFetch = async (url, req, fetchHeaders = false, aidName = "") => {
-  if (fetchHeaders && aidName) {
+const signifyHeaders = async (rurl, req, aidName = "") => {
+  if (aidName) {
     if (canCallAsync()) {
       const { data, error } = await chrome.runtime.sendMessage(extensionId, {
         type: "fetch-resource",
         subtype: "signify-headers",
-        data: { aidName },
+        data: { aidName, rurl, reqInit: req },
       });
       if (error && error.message) {
         throw new Error(error.message);
       }
-      req.headers = { ...(req.headers ?? {}), ...(data ?? {}) };
+      req.headers = { ...(req.headers ?? {}), ...(data.headers ?? {}) };
     } else {
       req.headers = {
         ...(req.headers ?? {}),
-        "x-append-signify-headers": "true",
+        rurl,
         "x-aid-name": aidName,
       };
     }
   }
-  return window.fetch(url, req);
+  return req.headers;
 };
 
 const isExtensionInstalled = () => {
@@ -173,5 +196,5 @@ export {
   isExtensionInstalled,
   trySettingVendorUrl,
   canCallAsync,
-  signifyFetch,
+  signifyHeaders,
 };
