@@ -1,12 +1,17 @@
 const isBrave = () => {
   // in brave browser, a brave namespace exists with isBrave function that returns promise
   // instead of calling that method (because it returns promise), we are just checking if it exists.
-  return window.navigator.brave?.isBrave.name === "isBrave";
+  if ("brave" in window.navigator && typeof window.navigator.brave === "object") {
+    const brave = window.navigator.brave as { isBrave: { name: string } };
+    return brave.isBrave.name === "isBrave";
+  }
+
+  return false;
 };
 
 const getBrowser = () => {
   // Get the user-agent string
-  let { userAgent } = navigator;
+  const { userAgent } = navigator;
 
   if (userAgent.indexOf("Firefox") > -1) {
     return "firefox";
