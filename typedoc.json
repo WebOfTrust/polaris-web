@@ -1,0 +1,11 @@
+{
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": false,
+    "includeFolders": true
+  },
+  "categorizeByGroup": false,
+  "visibilityFilters": {
+    "@internal": false,
+  }
+}

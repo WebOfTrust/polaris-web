@@ -1,9 +1,14 @@
+import { EventMap } from "./types";
+
+/**
+ * @internal
+ */
 export const pubsub = (() => {
-  const events = {};
+  const events: EventMap = {};
 
   let subscribersId = -1;
 
-  function publish(event, data) {
+  function publish(event: string, data: any) {
     if (!events[event]) {
       return false;
     }
@@ -15,7 +20,7 @@ export const pubsub = (() => {
     return true;
   }
 
-  function subscribe(event, func) {
+  function subscribe(event: string, func: Function) {
     if (!events[event]) {
       events[event] = [];
     }
@@ -29,7 +34,7 @@ export const pubsub = (() => {
     return token;
   }
 
-  function unsubscribe(token) {
+  function unsubscribe(token: string) {
     const found = Object.keys(events).some((event) =>
       events[event].some((subscriber, index) => {
         const areEqual = subscriber.token === token.toString();
