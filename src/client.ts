@@ -4,6 +4,7 @@ export interface SelectCredentialResult {
   credential?: unknown;
   cesr?: string;
   headers?: unknown;
+  sessionId: string;
 }
 
 export interface SignArgs {
@@ -17,6 +18,7 @@ export interface SignResult {
 }
 
 export interface SignedHeadersArgs {
+  sessionId: string;
   url: string;
   method: string;
   headers?: Record<string, string | undefined>;
