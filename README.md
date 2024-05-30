@@ -3,6 +3,8 @@
 
 ##  Usage
 
+Example usage where the web app requests to login, then issues a request with signed headers.
+
 ```typescript
 import { createClient } from "signify-polaris-web";
 
