@@ -8,13 +8,13 @@ export interface SelectCredentialResult {
 }
 
 export interface SignArgs {
-  body: string;
-  items: string[];
+  sessionId: string;
+  data: string;
 }
 
 export interface SignResult {
   aid: string;
-  signatures: string[];
+  signature: string;
 }
 
 export interface SignedHeadersArgs {
