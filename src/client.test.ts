@@ -1,6 +1,6 @@
 import { expect, test, vitest, beforeEach, describe } from "vitest";
 import { randomBytes, randomUUID } from "node:crypto";
-import { SelectCredentialResult, SignArgs, createClient } from "./client.js";
+import { LoginResult, SignArgs, createClient } from "./client.js";
 
 Object.assign(window, {
   postMessage: (message: unknown) => {
@@ -105,22 +105,21 @@ describe("Sign request", () => {
     handleMessage.mockImplementationOnce((ev) => {
       resolve(ev, {
         aid: randomUUID(),
-        signatures: ev.data.data.items.map(() => randomUUID()),
+        signature: randomBytes(10).toString("hex"),
       });
     });
 
     const signRequest: SignArgs = {
-      body: "Sign this",
-      items: [randomBytes(10).toString("hex")],
+      sessionId: randomUUID(),
+      data: randomBytes(10).toString("hex"),
     };
 
-    const response = await client.requestSignatures(signRequest);
+    const response = await client.requestSignature(signRequest);
 
     const request = handleMessage.mock.calls[0][0];
     expect(request.data.data).toMatchObject(signRequest);
     expect(request.data.requestId).toBeDefined();
-    expect(response.signatures).toHaveLength(1);
-    expect(response.signatures[0]).toBeTypeOf("string");
+    expect(response.signature).toBeTypeOf("string");
   });
 
   test("Should throw when responding with error", async () => {
@@ -131,11 +130,11 @@ describe("Sign request", () => {
     });
 
     const signRequest: SignArgs = {
-      body: "Sign this",
-      items: [randomBytes(10).toString("hex")],
+      sessionId: randomUUID(),
+      data: randomBytes(10).toString("hex"),
     };
 
-    await expect(() => client.requestSignatures(signRequest)).rejects.toThrow("Declined");
+    await expect(() => client.requestSignature(signRequest)).rejects.toThrow("Declined");
   });
 });
 
@@ -147,24 +146,11 @@ describe("Select credential", () => {
     const client = createClient();
 
     handleMessage.mockImplementationOnce((ev) => {
-      resolve<SelectCredentialResult>(ev, { cesr, credential, headers: null });
+      resolve<LoginResult>(ev, { sessionId: randomUUID(), cesr, credential, headers: null });
     });
 
-    const response = await client.requestCredential();
+    const response = await client.requestLogin();
 
     expect(response).toMatchObject({ cesr, credential });
-  });
-
-  test("Should send request url", async () => {
-    const client = createClient();
-
-    handleMessage.mockImplementationOnce((ev) => {
-      resolve<SelectCredentialResult>(ev, { cesr, credential, headers: null });
-    });
-
-    const rurl = randomUUID();
-    await client.requestCredential(rurl);
-
-    expect(handleMessage.mock.calls[0][0].data.rurl).toEqual(rurl);
   });
 });

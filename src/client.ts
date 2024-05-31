@@ -1,6 +1,10 @@
 import { canCallAsync } from "./utils.js";
 
-export interface SelectCredentialResult {
+export interface LoginArgs {
+  message?: string;
+}
+
+export interface LoginResult {
   credential?: unknown;
   cesr?: string;
   headers?: unknown;
@@ -135,7 +139,7 @@ export class ExtensionClient {
     return result;
   };
 
-  requestSignatures = async (args: SignArgs): Promise<SignResult> => {
+  requestSignature = async (args: SignArgs): Promise<SignResult> => {
     return this.#sendMessage({ type: "sign", data: args });
   };
 
@@ -143,8 +147,8 @@ export class ExtensionClient {
     return this.#sendMessage({ type: "select-identifier" });
   };
 
-  requestCredential = async (rurl?: string): Promise<SelectCredentialResult> => {
-    return this.#sendMessage({ type: "select-credential", rurl });
+  requestLogin = async (login?: LoginArgs): Promise<LoginResult> => {
+    return this.#sendMessage({ type: "select-credential", data: login });
   };
 
   requestAidORCred = async (rurl?: string): Promise<unknown> => {
