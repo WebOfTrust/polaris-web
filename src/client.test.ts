@@ -1,6 +1,6 @@
 import { expect, test, vitest, beforeEach, describe } from "vitest";
 import { randomBytes, randomUUID } from "node:crypto";
-import { LoginResult, SignArgs, createClient } from "./client.js";
+import { AuthorizeResult, SignDataArgs, SignDataResult, createClient } from "./client.js";
 
 Object.assign(window, {
   postMessage: (message: unknown) => {
@@ -8,17 +8,17 @@ Object.assign(window, {
   },
 });
 
-function resolve<T = unknown>(ev: MessageEvent, data: T) {
+function resolve<T = unknown>(ev: MessageEvent, payload: T) {
   postMessage({
-    type: "signify-signature",
+    type: "/signify/reply",
     requestId: ev.data.requestId,
-    data,
+    payload,
   });
 }
 
 function reject(ev: MessageEvent, reason?: Error) {
   postMessage({
-    type: "signify-signature",
+    type: "/signify/reply",
     requestId: ev.data.requestId,
     error: reason?.message ?? "Something went wrong",
   });
@@ -102,24 +102,23 @@ describe("Sign request", () => {
   test("Should get sign response", async () => {
     const client = createClient();
 
-    handleMessage.mockImplementationOnce((ev) => {
-      resolve(ev, {
+    handleMessage.mockImplementationOnce((ev: MessageEvent<{ payload: SignDataArgs }>) => {
+      resolve<SignDataResult>(ev, {
         aid: randomUUID(),
-        signature: randomBytes(10).toString("hex"),
+        items: ev.data.payload.items.map((item) => ({ data: item, signature: randomBytes(10).toString("hex") })),
       });
     });
 
-    const signRequest: SignArgs = {
-      sessionId: randomUUID(),
-      data: randomBytes(10).toString("hex"),
+    const signRequest: SignDataArgs = {
+      items: [randomBytes(10).toString("hex")],
     };
 
-    const response = await client.requestSignature(signRequest);
+    const response = await client.signData(signRequest);
 
     const request = handleMessage.mock.calls[0][0];
-    expect(request.data.data).toMatchObject(signRequest);
+    expect(request.data.payload).toMatchObject(signRequest);
     expect(request.data.requestId).toBeDefined();
-    expect(response.signature).toBeTypeOf("string");
+    expect(response.items[0].signature).toBeTypeOf("string");
   });
 
   test("Should throw when responding with error", async () => {
@@ -129,12 +128,11 @@ describe("Sign request", () => {
       reject(ev, new Error("Declined"));
     });
 
-    const signRequest: SignArgs = {
-      sessionId: randomUUID(),
-      data: randomBytes(10).toString("hex"),
-    };
-
-    await expect(() => client.requestSignature(signRequest)).rejects.toThrow("Declined");
+    await expect(() =>
+      client.signData({
+        items: [randomBytes(10).toString("hex")],
+      }),
+    ).rejects.toThrow("Declined");
   });
 });
 
@@ -146,11 +144,11 @@ describe("Select credential", () => {
     const client = createClient();
 
     handleMessage.mockImplementationOnce((ev) => {
-      resolve<LoginResult>(ev, { sessionId: randomUUID(), cesr, credential, headers: null });
+      resolve<AuthorizeResult>(ev, { sessionId: randomUUID(), credential: { cesr, raw: credential } });
     });
 
-    const response = await client.requestLogin();
+    const response = await client.authorize();
 
-    expect(response).toMatchObject({ cesr, credential });
+    expect(response).toMatchObject({ credential: { cesr, raw: credential } });
   });
 });

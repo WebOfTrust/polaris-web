@@ -1,43 +1,105 @@
-import { canCallAsync } from "./utils.js";
-
-export interface LoginArgs {
+export interface AuthorizeArgs {
+  /**
+   * The optional message to provide to the extension
+   */
   message?: string;
 }
 
-export interface LoginResult {
-  credential?: unknown;
-  cesr?: string;
-  headers?: unknown;
+export interface AuthorizeResultCredential {
+  /**
+   * The credential data
+   */
+  raw: unknown;
+
+  /**
+   * The credential data as a CESR encoded key event stream
+   */
+  cesr: string;
+}
+
+export interface AuthorizeResult {
+  /**
+   * If the extension responds with a credential, the data will be contained here.
+   */
+  credential?: AuthorizeResultCredential;
+
+  /**
+   * The session id of this authorization, if permissions to sign headers were requested, this
+   * session id needs to be provided.
+   */
   sessionId: string;
 }
 
-export interface SignArgs {
-  sessionId: string;
+export interface SignDataArgs {
+  /**
+   * The optional message to provide to the extension
+   */
+  message?: string;
+  /**
+   * The data to sign as utf-8 encoded strings
+   */
+  items: string[];
+}
+
+export interface SignDataResultItem {
+  /**
+   * The data that was signed
+   */
   data: string;
-}
 
-export interface SignResult {
-  aid: string;
+  /**
+   * The signature
+   */
   signature: string;
 }
 
-export interface SignedHeadersArgs {
-  sessionId: string;
-  url: string;
-  method: string;
-  headers?: Record<string, string | undefined>;
+export interface SignDataResult {
+  /**
+   * The prefix of the AID that signed the data.
+   */
+  aid: string;
+
+  /**
+   * The data and the signatures
+   */
+  items: SignDataResultItem[];
 }
 
-export interface SignedHeadersResult {
+export interface SignRequestArgs {
+  /**
+   * The authorization session id that for the permission to sign requests
+   */
+  sessionId: string;
+
+  /**
+   * The URL of the request to sign.
+   */
+  url: string;
+
+  /**
+   * The method of the request to sign.
+   *
+   * @default "GET"
+   */
+  method?: string;
+
+  /**
+   * Optional headers of the request.
+   */
+  headers?: Record<string, string>;
+}
+
+export interface SignRequestResult {
+  /**
+   * The Signify signed headers that should be appended to the request.
+   */
   headers: Record<string, string>;
 }
 
-export interface MessageData {
+export interface MessageData<T = unknown> {
   type: string;
   requestId: string;
-  subtype?: string;
-  rurl?: string;
-  data?: unknown;
+  payload?: T;
   error?: string;
 }
 
@@ -66,9 +128,9 @@ class Deferred<T = void> implements PromiseLike<T> {
 export class ExtensionClient {
   #requests = new Map<string, PendingRequest>();
   #extensionIdPromise: Deferred<string | false> = new Deferred<string | false>();
-  #extensionId: string | null = null;
 
   constructor() {
+    this.sendMessage = this.sendMessage.bind(this);
     window.addEventListener("message", this.#handleEvent, false);
   }
 
@@ -81,7 +143,7 @@ export class ExtensionClient {
       return;
     }
 
-    const { requestId, type, error, data } = event.data;
+    const { requestId, type, error, payload } = event.data;
 
     if (!type || typeof type !== "string") {
       return;
@@ -92,7 +154,7 @@ export class ExtensionClient {
       return;
     }
 
-    if (type === "signify-signature" && requestId && typeof requestId === "string") {
+    if (type === "/signify/reply" && requestId && typeof requestId === "string") {
       const promise = this.#requests.get(requestId);
 
       if (!promise) {
@@ -101,31 +163,14 @@ export class ExtensionClient {
 
       if (error) {
         promise.reject(new Error(typeof error === "string" ? error : error.toString()));
-      } else if (!data || typeof data !== "object") {
-        promise.reject(new Error("No data received in response"));
+      } else if (!payload || typeof payload !== "object") {
+        promise.reject(new Error("No payload received in response"));
       } else {
-        promise.resolve(data);
+        promise.resolve(payload);
       }
 
       this.#requests.delete(requestId);
     }
-  };
-
-  #sendMessage = async <T = unknown>(message: Omit<MessageData, "requestId">): Promise<T> => {
-    const requestId = window.crypto.randomUUID();
-
-    const promise = new Promise<T>((resolve, reject) => {
-      this.#requests.set(requestId, {
-        resolve(value: unknown) {
-          resolve(value as T);
-        },
-        reject,
-      });
-    });
-
-    window.postMessage({ requestId, ...message }, "/");
-
-    return promise;
   };
 
   isExtensionInstalled = async (timeout: number = 1000): Promise<string | false> => {
@@ -139,98 +184,37 @@ export class ExtensionClient {
     return result;
   };
 
-  requestSignature = async (args: SignArgs): Promise<SignResult> => {
-    return this.#sendMessage({ type: "sign", data: args });
+  signRequest = async (req: SignRequestArgs): Promise<SignRequestResult> => {
+    return this.sendMessage("/signify/sign-request", req);
   };
 
-  requestAid = async (): Promise<unknown> => {
-    return this.#sendMessage({ type: "select-identifier" });
+  signData = async (payload: SignDataArgs): Promise<SignDataResult> => {
+    return this.sendMessage("/signify/sign-data", payload);
   };
 
-  requestLogin = async (login?: LoginArgs): Promise<LoginResult> => {
-    return this.#sendMessage({ type: "select-credential", data: login });
+  authorize = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
+    return this.sendMessage("/signify/authorize", payload);
   };
 
-  requestAidORCred = async (rurl?: string): Promise<unknown> => {
-    return this.#sendMessage({ type: "select-aid-or-credential", rurl });
-  };
+  async sendMessage(type: "/signify/sign-request", payload?: SignRequestArgs): Promise<SignRequestResult>;
+  async sendMessage(type: "/signify/sign-data", payload?: SignDataArgs): Promise<SignDataResult>;
+  async sendMessage(type: "/signify/authorize", payload?: AuthorizeArgs): Promise<AuthorizeResult>;
+  async sendMessage<TRequest, TResponse>(type: string, payload?: TRequest): Promise<TResponse> {
+    const requestId = window.crypto.randomUUID();
 
-  requestSignedHeaders = async (req: SignedHeadersArgs): Promise<SignedHeadersResult> => {
-    return this.#sendMessage<SignedHeadersResult>({
-      type: "signed-headers",
-      data: req,
-    });
-  };
-
-  trySettingVendorUrl = async (vendorUrl: string): Promise<void> => {
-    window.postMessage(
-      {
-        type: "vendor-info",
-        subtype: "attempt-set-vendor-url",
-        data: {
-          vendorUrl,
+    const promise = new Promise<TResponse>((resolve, reject) => {
+      this.#requests.set(requestId, {
+        resolve(value: unknown) {
+          resolve(value as TResponse);
         },
-      },
-      "/",
-    );
-  };
-
-  requestAutoSignin = async (rurl?: string): Promise<unknown> => {
-    const execute = async () => {
-      if (canCallAsync()) {
-        const { data, error } = await chrome.runtime.sendMessage(this.#extensionId, {
-          type: "fetch-resource",
-          subtype: "auto-signin-signature",
-          data: {
-            rurl,
-          },
-        });
-        if (error) {
-          if (error.code === 404) {
-            return await this.#sendMessage({ type: "select-auto-signin", rurl });
-          } else {
-            throw error;
-          }
-        } else {
-          return data;
-        }
-      } else {
-        return this.#sendMessage({
-          type: "fetch-resource",
-          subtype: "auto-signin-signature",
-          rurl,
-        });
-      }
-    };
-
-    return new Promise((resolve, reject) => {
-      execute().then(resolve, reject);
+        reject,
+      });
     });
-  };
 
-  signifyHeaders = async (rurl: string, req: RequestInit, aidName = ""): Promise<HeadersInit> => {
-    if (aidName) {
-      if (canCallAsync() && this.#extensionId) {
-        const { data, error } = await chrome.runtime.sendMessage(this.#extensionId, {
-          type: "fetch-resource",
-          subtype: "signify-headers",
-          data: { aidName, rurl, reqInit: req },
-        });
-        if (error && error.message) {
-          throw new Error(error.message);
-        }
-        req.headers = { ...(req.headers ?? {}), ...(data.headers ?? {}) };
-      } else {
-        req.headers = {
-          ...(req.headers ?? {}),
-          rurl,
-          "x-aid-name": aidName,
-        };
-      }
-    }
+    window.postMessage({ requestId, type, payload }, "/");
 
-    return req.headers ?? {};
-  };
+    return promise;
+  }
 }
 
 export function createClient(): ExtensionClient {
