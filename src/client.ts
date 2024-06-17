@@ -188,18 +188,52 @@ export class ExtensionClient {
     return this.sendMessage("/signify/sign-request", req);
   };
 
+  /**
+   * Sends a /signify/sign-data message to the extension.
+   *
+   * The extension should prompt the user to select a credential to sign with.
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
   signData = async (payload: SignDataArgs): Promise<SignDataResult> => {
     return this.sendMessage("/signify/sign-data", payload);
   };
 
+  /**
+   * Sends a /signify/authorize message to the extension.
+   *
+   * The extension should prompt the user to select a credential,
+   * on success, it should send a /signify/reply message back to the browser page.
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
   authorize = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
     return this.sendMessage("/signify/authorize", payload);
   };
 
-  async sendMessage(type: "/signify/sign-request", payload?: SignRequestArgs): Promise<SignRequestResult>;
-  async sendMessage(type: "/signify/sign-data", payload?: SignDataArgs): Promise<SignDataResult>;
-  async sendMessage(type: "/signify/authorize", payload?: AuthorizeArgs): Promise<AuthorizeResult>;
-  async sendMessage<TRequest, TResponse>(type: string, payload?: TRequest): Promise<TResponse> {
+  /**
+   * Sends an arbitrary message to the extension.
+   *
+   * This method can be used if there is no shorthand method implemented yet
+   * for the message that needs to be sent.
+   *
+   * The message will have the form
+   *
+   * ```typescript
+   * {
+   *    "type": string,
+   *    "requestId": string,
+   *    "payload": unknown
+   * }
+   * ```
+   *
+   * @param type
+   * @param payload
+   * @returns
+   */
+  sendMessage = async <TRequest, TResponse>(type: string, payload?: TRequest): Promise<TResponse> => {
     const requestId = window.crypto.randomUUID();
 
     const promise = new Promise<TResponse>((resolve, reject) => {
@@ -214,9 +248,28 @@ export class ExtensionClient {
     window.postMessage({ requestId, type, payload }, "/");
 
     return promise;
-  }
+  };
 }
 
+/**
+ * Creates and returns a new extension client.
+ * The created instance can be used to communicate with a compatible browser extension.
+ *
+ * @example
+ * const client = createClient();
+ * const authResult = await client.authorize({ message: "A message" });
+ *
+ * const signResult = await client.signRequest({
+ *   url: "http://example.com",
+ *   method: "GET",
+ *   sessionId: authResult.sessionId
+ * });
+ *
+ * await fetch("http://example.com", { headers: signResult.headers })
+ *
+ *
+ * @returns {ExtensionClient}
+ */
 export function createClient(): ExtensionClient {
   return new ExtensionClient();
 }

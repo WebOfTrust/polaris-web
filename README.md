@@ -9,3 +9,9 @@ To test the example,
 
 - `npm install`
 - `npm -w web-react start`
+
+
+To view generated documentation,
+
+- `npm install`
+- `npm run docs:serve`
