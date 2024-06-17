@@ -1,34 +1,11 @@
 # polaris-web
 
 
-##  Usage
+##  Getting started
 
-Example usage where the web app requests to login, then issues a request with signed headers.
+See [web-react](./examples/web-react/src/App.tsx) for an example react web app that uses this library to communicate with a signify browser extension.
 
-```typescript
-import { createClient } from "signify-polaris-web";
+To test the example,
 
-const client = createClient();
-
-async function handleLogin() {
-    // This prompts the user to open the wallet and select a credential
-    // promise is resolved with the CESR stream of the selected credential.
-    const { cesr, sessionId } = await client.requestCredential();
-
-
-    const response = await fetch("/verify", { body: cesr })
-    if (!response.ok) {
-        throw new Error("Not OK")
-    }
-
-    // Credential has been verified, so now the user can be considered "Logged in"
-
-    const url = "/secret/resource";
-    const method = "GET";
-    const { headers } = await client.requestSignedHeaders({ url, method, sessionId })
-    const request = new Request(url, { method, headers })
-
-    // Resource server verifies the headers
-    const secretResponse = await fetch(request)
-}
-```
+- `npm install`
+- `npm -w web-react start`
