@@ -15,3 +15,13 @@ To view generated documentation,
 
 - `npm install`
 - `npm run docs:serve`
+
+## Usage
+
+Install the package. At this point in time, the easiest way is to install straight from github.
+
+```
+npm install --save github:weboftrust/polaris-web#main
+```
+
+Change repository owner and branch as needed.
