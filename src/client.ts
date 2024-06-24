@@ -150,6 +150,12 @@ export class ExtensionClient {
   constructor(private options: ExtensionClientOptions) {
     this.sendMessage = this.sendMessage.bind(this);
     window.addEventListener("message", this.#handleEvent, false);
+
+    // Sending a notification to the extension that a client has been loaded. This is to avoid
+    // the condition where the extension sends the "signify-extension" message before the client is loaded.
+    // The idea is that the extension should send a "signify-extension" on load, but also whenever it receives
+    // a signify-extension-client message.
+    window.postMessage({ type: "signify-extension-client" }, this.options.targetOrigin ?? "/");
   }
 
   #handleEvent = async (event: MessageEvent) => {
@@ -192,12 +198,6 @@ export class ExtensionClient {
   };
 
   isExtensionInstalled = async (timeout: number = 3000): Promise<string | false> => {
-    // Sending a notification to the extension that a client has been loaded. This is to avoid
-    // the condition where the extension sends the "signify-extension" message before the client is loaded.
-    // The idea is that the extension should send a "signify-extension" on load, but also whenever it receives
-    // a signify-extension-client message.
-    window.postMessage({ type: "signify-extension-client" }, this.options.targetOrigin ?? "/");
-
     const timer = setTimeout(() => {
       this.#extensionIdPromise.resolve(false);
     }, timeout);

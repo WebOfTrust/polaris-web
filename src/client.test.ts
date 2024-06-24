@@ -54,6 +54,11 @@ beforeEach(() => {
 });
 
 describe("Check installation", () => {
+  test("Should post signify-extension-client to notify that client is loaded", async () => {
+    createClient();
+    expect(handleMessage.mock.lastCall?.[0].data).toMatchObject({ type: "signify-extension-client" });
+  });
+
   test("Should return extension id if installed", async () => {
     const client = createClient();
     const extension = createMockExtension();
@@ -110,17 +115,6 @@ describe("Check installation", () => {
     expect(await response2).toEqual(extensionId);
     expect(await response3).toEqual(extensionId);
   });
-
-  test("Should post signify-extension-client to notify that client is loaded", async () => {
-    const client = createClient();
-    const extension = createMockExtension();
-
-    extension.postExtension();
-
-    await client.isExtensionInstalled();
-
-    expect(handleMessage.mock.lastCall?.[0].data).toMatchObject({ type: "signify-extension-client" });
-  });
 });
 
 describe("Sign request", () => {
@@ -139,6 +133,7 @@ describe("Sign request", () => {
       items: [randomBytes(10).toString("hex")],
     };
 
+    handleMessage.mockClear();
     const response = await client.signData(signRequest);
 
     const request = handleMessage.mock.calls[0][0];
