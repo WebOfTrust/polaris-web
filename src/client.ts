@@ -17,11 +17,23 @@ export interface AuthorizeResultCredential {
   cesr: string;
 }
 
+export interface AuthorizeResultIdentifier {
+  /**
+   * The prefix of the selected identifier
+   */
+  prefix: string;
+}
+
 export interface AuthorizeResult {
   /**
    * If the extension responds with a credential, the data will be contained here.
    */
   credential?: AuthorizeResultCredential;
+
+  /**
+   * If the extension responds with an identifier, the data will be contained here.
+   */
+  identifier?: AuthorizeResultIdentifier;
 }
 
 export interface SignDataArgs {
@@ -86,6 +98,13 @@ export interface SignRequestResult {
   headers: Record<string, string>;
 }
 
+export interface ConfigureVendorArgs {
+  /**
+   * The vendor url
+   */
+  vendorUrl: string;
+}
+
 export interface MessageData<T = unknown> {
   type: string;
   requestId: string;
@@ -115,11 +134,20 @@ class Deferred<T = void> implements PromiseLike<T> {
   }
 }
 
+export interface ExtensionClientOptions {
+  /**
+   * The target origin for the messages.
+   *
+   * See https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#targetorigin
+   */
+  targetOrigin?: string;
+}
+
 export class ExtensionClient {
   #requests = new Map<string, PendingRequest>();
   #extensionIdPromise: Deferred<string | false> = new Deferred<string | false>();
 
-  constructor() {
+  constructor(private options: ExtensionClientOptions) {
     this.sendMessage = this.sendMessage.bind(this);
     window.addEventListener("message", this.#handleEvent, false);
   }
@@ -163,7 +191,13 @@ export class ExtensionClient {
     }
   };
 
-  isExtensionInstalled = async (timeout: number = 1000): Promise<string | false> => {
+  isExtensionInstalled = async (timeout: number = 3000): Promise<string | false> => {
+    // Sending a notification to the extension that a client has been loaded. This is to avoid
+    // the condition where the extension sends the "signify-extension" message before the client is loaded.
+    // The idea is that the extension should send a "signify-extension" on load, but also whenever it receives
+    // a signify-extension-client message.
+    window.postMessage({ type: "signify-extension-client" }, this.options.targetOrigin ?? "/");
+
     const timer = setTimeout(() => {
       this.#extensionIdPromise.resolve(false);
     }, timeout);
@@ -174,33 +208,62 @@ export class ExtensionClient {
     return result;
   };
 
+  /**
+   * Sends a /signify/sign-request message to the extension.
+   *
+   * The extension decides whether or not it needs to prompt the user to approve the signing
+   * or automatically sign the request.
+   *
+   * @param payload Information about the request that needs to be signed.
+   * @returns
+   */
   signRequest = async (payload: SignRequestArgs): Promise<SignRequestResult> => {
-    return this.sendMessage("/signify/sign-request", payload);
+    return this.sendMessage("/signify/sign-request", { payload });
   };
 
   /**
    * Sends a /signify/sign-data message to the extension.
    *
-   * The extension should prompt the user to select a credential to sign with.
+   * The extension should prompt the user to select a credential or identifier to sign with.
    *
    * @param payload The arguments to pass to the extension.
    * @returns {AuthorizeResult}
    */
   signData = async (payload: SignDataArgs): Promise<SignDataResult> => {
-    return this.sendMessage("/signify/sign-data", payload);
+    return this.sendMessage("/signify/sign-data", { payload });
   };
 
   /**
    * Sends a /signify/authorize message to the extension.
    *
-   * The extension should prompt the user to select a credential,
+   * The extension should prompt the user to select a credential or identifier,
    * on success, it should send a /signify/reply message back to the browser page.
+   *
+   * This method is used to start an authorized "session" with the extension. Depending
+   * on the implemention, the extension can start to allow "signRequest" messages
+   * after a successful authorization.
    *
    * @param payload The arguments to pass to the extension.
    * @returns {AuthorizeResult}
    */
   authorize = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
-    return this.sendMessage("/signify/authorize", payload);
+    return this.sendMessage("/signify/authorize", { payload });
+  };
+
+  /**
+   * Configures the extension with the specified vendor.
+   *
+   * @param payload The vendor configuration
+   */
+  configureVendor = async (payload?: ConfigureVendorArgs): Promise<void> => {
+    window.postMessage(
+      {
+        type: "vendor-info",
+        subtype: "attempt-set-vendor-url",
+        data: payload,
+      },
+      this.options.targetOrigin ?? "/",
+    );
   };
 
   /**
@@ -209,13 +272,14 @@ export class ExtensionClient {
    * This method can be used if there is no shorthand method implemented yet
    * for the message that needs to be sent.
    *
-   * The message will have the form
+   * The message will always contain the "type" property and a unique "requestId".
+   * The second parameter will be spread, this allows you to add any additional properties to the request.
    *
    * ```typescript
    * {
    *    "type": string,
    *    "requestId": string,
-   *    "payload": unknown
+   *    ...payload
    * }
    * ```
    *
@@ -235,7 +299,7 @@ export class ExtensionClient {
       });
     });
 
-    window.postMessage({ requestId, type, payload }, "/");
+    window.postMessage({ requestId, type, ...payload }, this.options.targetOrigin ?? "/");
 
     return promise;
   };
@@ -260,6 +324,6 @@ export class ExtensionClient {
  *
  * @returns {ExtensionClient}
  */
-export function createClient(): ExtensionClient {
-  return new ExtensionClient();
+export function createClient(options?: ExtensionClientOptions): ExtensionClient {
+  return new ExtensionClient(options ?? {});
 }

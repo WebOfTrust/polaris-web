@@ -8,20 +8,39 @@ Object.assign(window, {
   },
 });
 
-function resolve<T = unknown>(ev: MessageEvent, payload: T) {
-  postMessage({
-    type: "/signify/reply",
-    requestId: ev.data.requestId,
-    payload,
-  });
-}
+function createMockExtension(type = "/signify/reply") {
+  const extensionId = randomUUID();
+  function resolve<T = unknown>(ev: MessageEvent, payload: T) {
+    postMessage({
+      type,
+      requestId: ev.data.requestId,
+      payload,
+    });
+  }
 
-function reject(ev: MessageEvent, reason?: Error) {
-  postMessage({
-    type: "/signify/reply",
-    requestId: ev.data.requestId,
-    error: reason?.message ?? "Something went wrong",
-  });
+  function reject(ev: MessageEvent, reason?: Error) {
+    postMessage({
+      type,
+      requestId: ev.data.requestId,
+      error: reason?.message ?? "Something went wrong",
+    });
+  }
+
+  function postExtension() {
+    postMessage({
+      type: "signify-extension",
+      data: {
+        extensionId,
+      },
+    });
+  }
+
+  return {
+    resolve,
+    reject,
+    postExtension,
+    extensionId,
+  };
 }
 
 const handleMessage = vitest.fn<[MessageEvent], void>();
@@ -37,18 +56,13 @@ beforeEach(() => {
 describe("Check installation", () => {
   test("Should return extension id if installed", async () => {
     const client = createClient();
+    const extension = createMockExtension();
 
-    const extensionId = randomUUID();
-    postMessage({
-      type: "signify-extension",
-      data: {
-        extensionId,
-      },
-    });
+    extension.postExtension();
 
     const response = await client.isExtensionInstalled();
 
-    expect(response).toEqual(extensionId);
+    expect(response).toEqual(extension.extensionId);
   });
 
   test("Should return false if not installed", async () => {
@@ -96,14 +110,26 @@ describe("Check installation", () => {
     expect(await response2).toEqual(extensionId);
     expect(await response3).toEqual(extensionId);
   });
+
+  test("Should post signify-extension-client to notify that client is loaded", async () => {
+    const client = createClient();
+    const extension = createMockExtension();
+
+    extension.postExtension();
+
+    await client.isExtensionInstalled();
+
+    expect(handleMessage.mock.lastCall?.[0].data).toMatchObject({ type: "signify-extension-client" });
+  });
 });
 
 describe("Sign request", () => {
   test("Should get sign response", async () => {
     const client = createClient();
+    const extension = createMockExtension();
 
     handleMessage.mockImplementationOnce((ev: MessageEvent<{ payload: SignDataArgs }>) => {
-      resolve<SignDataResult>(ev, {
+      extension.resolve<SignDataResult>(ev, {
         aid: randomUUID(),
         items: ev.data.payload.items.map((item) => ({ data: item, signature: randomBytes(10).toString("hex") })),
       });
@@ -123,9 +149,10 @@ describe("Sign request", () => {
 
   test("Should throw when responding with error", async () => {
     const client = createClient();
+    const extension = createMockExtension();
 
     handleMessage.mockImplementationOnce((ev) => {
-      reject(ev, new Error("Declined"));
+      extension.reject(ev, new Error("Declined"));
     });
 
     await expect(() =>
@@ -136,15 +163,16 @@ describe("Sign request", () => {
   });
 });
 
-describe("Select credential", () => {
+describe("Authorize", () => {
   const cesr = randomUUID();
   const credential = { foo: "bar" };
+  const extension = createMockExtension();
 
   test("Should get credential response", async () => {
     const client = createClient();
 
     handleMessage.mockImplementationOnce((ev) => {
-      resolve<AuthorizeResult>(ev, { credential: { cesr, raw: credential } });
+      extension.resolve<AuthorizeResult>(ev, { credential: { cesr, raw: credential } });
     });
 
     const response = await client.authorize();
