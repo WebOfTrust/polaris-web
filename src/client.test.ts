@@ -144,7 +144,7 @@ describe("Select credential", () => {
     const client = createClient();
 
     handleMessage.mockImplementationOnce((ev) => {
-      resolve<AuthorizeResult>(ev, { sessionId: randomUUID(), credential: { cesr, raw: credential } });
+      resolve<AuthorizeResult>(ev, { credential: { cesr, raw: credential } });
     });
 
     const response = await client.authorize();

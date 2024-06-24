@@ -22,12 +22,6 @@ export interface AuthorizeResult {
    * If the extension responds with a credential, the data will be contained here.
    */
   credential?: AuthorizeResultCredential;
-
-  /**
-   * The session id of this authorization, if permissions to sign headers were requested, this
-   * session id needs to be provided.
-   */
-  sessionId: string;
 }
 
 export interface SignDataArgs {
@@ -35,6 +29,7 @@ export interface SignDataArgs {
    * The optional message to provide to the extension
    */
   message?: string;
+
   /**
    * The data to sign as utf-8 encoded strings
    */
@@ -66,11 +61,6 @@ export interface SignDataResult {
 }
 
 export interface SignRequestArgs {
-  /**
-   * The authorization session id that for the permission to sign requests
-   */
-  sessionId: string;
-
   /**
    * The URL of the request to sign.
    */
@@ -184,8 +174,8 @@ export class ExtensionClient {
     return result;
   };
 
-  signRequest = async (req: SignRequestArgs): Promise<SignRequestResult> => {
-    return this.sendMessage("/signify/sign-request", req);
+  signRequest = async (payload: SignRequestArgs): Promise<SignRequestResult> => {
+    return this.sendMessage("/signify/sign-request", payload);
   };
 
   /**

@@ -39,7 +39,7 @@ export function App() {
     setHeaders(null);
 
     try {
-      const result = await client.signRequest({ sessionId: authorizeResult.sessionId, url, method });
+      const result = await client.signRequest({ url, method });
       setHeaders(result.headers);
     } catch (error) {
       setError(error.message ?? "Something went wrong");
@@ -83,7 +83,6 @@ export function App() {
             {JSON.stringify(
               {
                 isInstalled: extensionId,
-                sessionId: authorizeResult?.sessionId,
                 headers,
                 error,
               },
