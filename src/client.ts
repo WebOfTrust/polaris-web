@@ -315,8 +315,7 @@ export class ExtensionClient {
  *
  * const signResult = await client.signRequest({
  *   url: "http://example.com",
- *   method: "GET",
- *   sessionId: authResult.sessionId
+ *   method: "GET"
  * });
  *
  * await fetch("http://example.com", { headers: signResult.headers })
