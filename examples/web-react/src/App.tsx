@@ -54,7 +54,7 @@ export function App() {
         <h1>Request login</h1>
         <form id="login-form" onSubmit={handleAuthorize}>
           <button type="submit" disabled={pending}>
-            Request Credential
+            Request AID or Credential
           </button>
         </form>
       </section>

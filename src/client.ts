@@ -102,7 +102,7 @@ export interface ConfigureVendorArgs {
   /**
    * The vendor url
    */
-  vendorUrl: string;
+  url: string;
 }
 
 export interface MessageData<T = unknown> {
@@ -251,19 +251,54 @@ export class ExtensionClient {
   };
 
   /**
-   * Configures the extension with the specified vendor.
+   * Sends a /signify/authorize message to the extension.
    *
+   * The extension should prompt the user to select a identifier,
+   * on success, it should send a /signify/reply message back to the browser page.
+   *
+   * This method is used to start an authorized "session" with the extension. Depending
+   * on the implemention, the extension can start to allow "signRequest" messages
+   * after a successful authorization.
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
+  authorizeAid = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
+    return this.sendMessage("/signify/authorize/aid", { payload });
+  };
+
+  /**
+   * Sends a /signify/authorize message to the extension.
+   *
+   * The extension should prompt the user to select a credential,
+   * on success, it should send a /signify/reply message back to the browser page.
+   *
+   * This method is used to start an authorized "session" with the extension. Depending
+   * on the implemention, the extension can start to allow "signRequest" messages
+   * after a successful authorization.
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
+  authorizeCred = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
+    return this.sendMessage("/signify/authorize/credential", { payload });
+  };
+
+  /**
+   * Configures the extension with the specified vendor.
    * @param payload The vendor configuration
+   * @summary Tries to set the vendor url in the extension to load vendor supplied info e.g theme, logo etc.
+   * @example
+   * ```ts
+   * await signifyClient.provideConfigUrl({url: "https://api.npoint.io/52639f849bb31823a8c0"});
+   * ```
+   * @remarks
+   * This function is used to set the vendor url in the extension. The extension will fetch the vendor supplied info from the vendor url in json format.
+   *
+   * @see Template for [Vendor Loaded JSON](https://api.npoint.io/52639f849bb31823a8c0)
    */
   configureVendor = async (payload?: ConfigureVendorArgs): Promise<void> => {
-    window.postMessage(
-      {
-        type: "vendor-info",
-        subtype: "attempt-set-vendor-url",
-        data: payload,
-      },
-      this.options.targetOrigin ?? "/",
-    );
+    return this.sendMessage("/signify/configure-vendor", { payload });
   };
 
   /**
@@ -299,7 +334,7 @@ export class ExtensionClient {
       });
     });
 
-    window.postMessage({ requestId, type, ...payload }, this.options.targetOrigin ?? "/");
+    window.postMessage({ requestId, type, ...(payload ?? {}) }, this.options.targetOrigin ?? "/");
 
     return promise;
   };
