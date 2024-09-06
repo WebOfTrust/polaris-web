@@ -285,6 +285,34 @@ export class ExtensionClient {
   };
 
   /**
+   * Sends a /signify/get-session-info message to the extension.
+   * prereq:
+   * once webapp has received an authorized result, a session is created on the extension
+   *
+   * Upon successfull session, this method is used to receive previously
+   * selected signature conditioned to its session validity. If session is expired this would throw an error.
+   * Otherwise, it returns AuthorizeResult
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
+  getSessionInfo = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
+    return this.sendMessage("/signify/get-session-info", { payload });
+  };
+
+  /**
+   * Sends a /signify/clear-session message to the extension.
+   *
+   * This method is used to clear session with extension if exist.
+   *
+   * @param payload The arguments to pass to the extension.
+   * @returns {AuthorizeResult}
+   */
+  clearSession = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
+    return this.sendMessage("/signify/clear-session", { payload });
+  };
+
+  /**
    * Configures the extension with the specified vendor.
    * @param payload The vendor configuration
    * @summary Tries to set the vendor url in the extension to load vendor supplied info e.g theme, logo etc.
