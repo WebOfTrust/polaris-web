@@ -1,8 +1,17 @@
+export interface SessionArgs {
+  oneTime?: boolean;
+}
+
 export interface AuthorizeArgs {
   /**
    * The optional message to provide to the extension
    */
   message?: string;
+ /**
+   * The optional message to provide to the extension
+   */
+  session?: SessionArgs;
+  
 }
 
 export interface AuthorizeResultCredential {
@@ -34,6 +43,8 @@ export interface AuthorizeResult {
    * If the extension responds with an identifier, the data will be contained here.
    */
   identifier?: AuthorizeResultIdentifier;
+
+  headers?: Record<string, string>;
 }
 
 export interface SignDataArgs {
