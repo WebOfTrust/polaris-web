@@ -7,11 +7,10 @@ export interface AuthorizeArgs {
    * The optional message to provide to the extension
    */
   message?: string;
- /**
+  /**
    * The optional message to provide to the extension
    */
   session?: SessionArgs;
-  
 }
 
 export interface AuthorizeResultCredential {
