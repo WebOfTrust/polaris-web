@@ -12,7 +12,7 @@
     "prepare": "husky",
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "format": "prettier --write .",
+    "format": "prettier --write 'src/**/*.{ts,json}'",
     "lint": "eslint src",
     "tsc": "bash -c tsc -p tsconfig.json",
     "docs:build": "typedoc src/index.ts --out out",
