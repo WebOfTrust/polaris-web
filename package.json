@@ -13,6 +13,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint src",
     "tsc": "bash -c tsc -p tsconfig.json",
     "docs:build": "typedoc src/index.ts --out out",
@@ -22,12 +23,10 @@
   "license": "ISC",
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "npm run format",
       "npm run lint",
       "npm run tsc"
     ],
     "src/**/*.js": [
-      "npm run format",
       "npm run lint"
     ]
   },
