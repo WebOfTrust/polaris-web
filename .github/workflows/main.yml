@@ -21,7 +21,7 @@ jobs:
         run: npm run lint
 
       - name: Run Prettier Formatter
-        run: npm run format
+        run: npm run format:check
 
       - name: Check TypeScript Types
         run: npm run tsc
