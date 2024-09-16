@@ -9,16 +9,27 @@
     "dist"
   ],
   "scripts": {
-    "prepare": "npm run build",
+    "prepare": "husky",
     "build": "tsc -p tsconfig.build.json",
-    "test": "vitest",
+    "test": "vitest run",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint src",
+    "tsc": "bash -c tsc -p tsconfig.json",
     "docs:build": "typedoc src/index.ts --out out",
     "docs:serve": "npm run docs:build && serve out"
   },
   "author": "RootsID",
   "license": "ISC",
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "npm run lint",
+      "npm run tsc"
+    ],
+    "src/**/*.js": [
+      "npm run lint"
+    ]
+  },
   "devDependencies": {
     "@eslint/js": "^9.3.0",
     "@types/chrome": "^0.0.268",
@@ -28,7 +39,9 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
+    "husky": "^9.1.6",
     "jsdom": "^24.1.0",
+    "lint-staged": "^15.2.10",
     "prettier": "^3.2.5",
     "serve": "^14.2.3",
     "typedoc": "^0.25.13",

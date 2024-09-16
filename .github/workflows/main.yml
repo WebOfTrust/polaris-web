@@ -1,0 +1,33 @@
+name: CI Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier Formatter
+        run: npm run format:check
+
+      - name: Check TypeScript Types
+        run: npm run tsc
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build Application
+        run: npm run build
