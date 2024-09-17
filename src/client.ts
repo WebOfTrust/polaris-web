@@ -335,8 +335,9 @@ export class ExtensionClient {
    *
    * @see Template for [Vendor Loaded JSON](https://api.npoint.io/52639f849bb31823a8c0)
    */
-  configureVendor = async (payload?: ConfigureVendorArgs): Promise<void> => {
-    return this.sendMessage("/signify/configure-vendor", { payload });
+  configureVendor = async (payload?: ConfigureVendorArgs): Promise<number> => {
+    this.sendMessage("/signify/configure-vendor", { payload });
+    return "str";
   };
 
   /**

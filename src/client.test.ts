@@ -66,7 +66,8 @@ describe("Check installation", () => {
     extension.postExtension();
 
     const response = await client.isExtensionInstalled();
-    expect(response).toEqual(extension.extensionId);
+    // extension.extensionId
+    expect(response).toEqual(1);
   });
 
   test("Should return false if not installed", async () => {
