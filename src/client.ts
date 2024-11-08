@@ -108,6 +108,34 @@ export interface SignRequestResult {
   headers: Record<string, string>;
 }
 
+export interface CredentialResult {
+  /**
+   * If the extension responds with a credential, the data will be contained here.
+   */
+  credential: any;
+
+}
+
+export interface CreateCredentialArgs {
+  /**
+   * credential attributes as per schema
+   */
+  credData: any;
+
+  /**
+   * SAID of the schema
+   *   
+   */
+  schemaSaid: string;
+}
+
+export interface CreateCredentialResult {
+  acdc: Record<string, any>;
+  iss: Record<string, any>;
+  anc: Record<string, any>;
+  op: Record<string, any>;
+}
+
 export interface ConfigureVendorArgs {
   /**
    * The vendor url
@@ -126,8 +154,8 @@ type PendingRequest<T = unknown> = { resolve: (value: T) => void; reject: (reaso
 
 class Deferred<T = void> implements PromiseLike<T> {
   promise: Promise<T>;
-  resolve: (value: T) => void = () => {};
-  reject: (reason?: Error) => void = () => {};
+  resolve: (value: T) => void = () => { };
+  reject: (reason?: Error) => void = () => { };
 
   constructor() {
     this.promise = new Promise<T>((resolve, reject) => {
@@ -320,6 +348,35 @@ export class ExtensionClient {
    */
   clearSession = async (payload?: AuthorizeArgs): Promise<AuthorizeResult> => {
     return this.sendMessage("/signify/clear-session", { payload });
+  };
+
+  /**
+    * Sends a /signify/credential/create/data-attestation message to the extension.
+    * 
+    * The extension decides whether or not it needs to prompt the user to approve the signing
+    * or automatically sign the request.
+    *
+    * Example of data attestation schema: https://github.com/provenant-dev/public-schema/blob/main/attestation/attestation.schema.json
+    * 
+    * @param payload  Information about data attestation credential.
+    * @returns {CreateCredentialResult}
+    */
+  createDataAttestationCredential = async (payload: CreateCredentialArgs): Promise<CreateCredentialResult> => {
+    return this.sendMessage("/signify/credential/create/data-attestation", { payload });
+  };
+
+  /**
+   * Sends a /signify/credential/get message to the extension.
+   * 
+   * The extension decides whether or not it needs to prompt the user to approve the signing
+   * or automatically sign the request.
+   *
+   * @param said  credential SAID.
+   * @param includeCESR  include credential CESR stream in response.
+   * @returns {CredentialResult}
+   */
+  getCredential = async (said: string, includeCESR: boolean = false): Promise<CredentialResult> => {
+    return this.sendMessage("/signify/credential/get", { payload: { id: said, includeCESR } });
   };
 
   /**
