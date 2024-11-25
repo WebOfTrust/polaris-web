@@ -24,7 +24,7 @@ const isInstalled = await client.isExtensionInstalled();
 
 ## Customizing the browser extension
 
-The browser extension could be customized, including changing the URL of the KERIA agent to which the extension is conneted or modifying the logo and colors of the browser extension according to the art style of a specific vendor.
+The browser extension could be customized, including changing the URL of the KERIA agent to which the extension is connected or modifying the logo and colors of the browser extension according to the art style of a specific vendor.
 
 ```
 client.configureVendor({url: customizationURL});
