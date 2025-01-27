@@ -20,7 +20,7 @@
     "docs:serve": "npm run docs:build && serve out"
   },
   "author": "RootsID",
-  "license": "ISC",
+  "license": "APACHE 2.0",
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
       "npm run lint",
