@@ -13,6 +13,21 @@ export interface AuthorizeArgs {
   session?: SessionArgs;
 }
 
+export interface ConfigWorkflowIssueCredentialArgs {
+  /**
+   * The optional message to provide to the extension
+   */
+  message?: string;
+  /**
+   * The optional message to provide to the extension
+   */
+  metadata?: Record<string, unknown>;
+}
+
+export interface ConfigWorkflowIssueCredentialResult {
+  
+}
+
 export interface AuthorizeResultCredential {
   /**
    * The credential data
@@ -363,6 +378,10 @@ export class ExtensionClient {
     */
   createDataAttestationCredential = async (payload: CreateCredentialArgs): Promise<CreateCredentialResult> => {
     return this.sendMessage("/signify/credential/create/data-attestation", { payload });
+  };
+
+  configWorkflowIssueCredential = async (payload?: ConfigWorkflowIssueCredentialArgs): Promise<ConfigWorkflowIssueCredentialResult> => {
+    return this.sendMessage("/signify/config-workflow-issue-credential", { payload });
   };
 
   /**
